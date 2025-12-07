@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SecureShell — Encryption & Decryption</title>
+
+  <style>
+    :root{
+      --bg:#e0f7fa; --card:#ffffff; --text:#072022; --muted:#4b6464; --primary:#00796b; --primary-text:#ffffff;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Arial, Helvetica, sans-serif;background:var(--bg);color:var(--text);padding:12px}
+
+    /* --- FULL WIDTH TOP BANNER LOGO --- */
+    .top-banner {
+      width: 100%;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .top-banner img {
+      width: 100%;
+      height: 50vh;       /* covers half of the viewport height */
+      object-fit: cover;  /* fills nicely */
+      display: block;
+    }
+
+    /* --- HEADER SECTION --- */
+    .header{display:flex;align-items:center;gap:12px}
+    .site-text h1{margin:0;font-size:24px;font-weight:800}
+    .site-text .subtitle{color:var(--muted);font-size:14px;margin-top:2px}
+
+    .main{display:flex;gap:16px;margin-top:12px;flex-wrap:wrap}
+    .card{background:var(--card);padding:12px;border-radius:10px;border:1px solid rgba(0,0,0,0.06);box-shadow:0 6px 18px rgba(2,6,23,0.06)}
+    .left{flex:1;min-width:300px}
+    .right{width:300px;min-width:280px}
+    label{display:block;margin-top:8px;font-weight:600}
+    textarea, input, select{width:100%;padding:8px;border-radius:6px;border:1px solid rgba(0,0,0,0.08);margin-top:6px;font-size:14px}
+    .btn{padding:8px 12px;border-radius:8px;border:0;cursor:pointer;font-weight:700}
+    .primary{background:var(--primary);color:var(--primary-text)}
+    .secondary{background:transparent;border:1px solid rgba(0,0,0,0.08)}
+    .row{display:flex;gap:8px;margin-top:10px}
+    #debug{height:140px;overflow:auto;background:#0b1220;color:#dff; padding:8px;border-radius:6px;font-family:monospace;font-size:13px}
+    .muted{color:var(--muted)}
+    .small{font-size:13px}
+
+    /* --- CHATBOT BUTTON + WINDOW --- */
+    .chatbot-btn{position:fixed;bottom:16px;right:16px;background:var(--primary);color:white;padding:12px 16px;border-radius:50px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:1000}
+    .chatbot-window{position:fixed;bottom:70px;right:16px;width:300px;background:white;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,0.2);display:none;flex-direction:column;max-height:400px;overflow:hidden;z-index:999}
+    .chatbot-header{background:var(--primary);color:white;padding:8px;border-top-left-radius:10px;border-top-right-radius:10px;font-weight:700}
+    .chatbot-messages{flex:1;padding:8px;overflow:auto;font-size:14px}
+    .chatbot-input{display:flex;border-top:1px solid #eee}
+    .chatbot-input input{flex:1;border:none;padding:8px;font-size:14px}
+    .chatbot-input button{background:var(--primary);color:white;border:none;padding:8px 12px;cursor:pointer}
+
+    .quote-section{margin-top:12px;padding:12px;background:#d0f0f5;border-radius:10px;font-style:italic;font-weight:600;text-align:center;font-size:16px}
+    .description-section{margin-top:12px;padding:12px;background:#f0f9f9;border-radius:10px;font-size:14px;color:#072022;line-height:1.5}
+    
+    .portfolio-section{margin-top:16px}
+    .portfolio-header{font-size:20px;font-weight:700;margin-bottom:12px;color:#00796b}
+    .portfolio-item{margin-bottom:10px}
+    .portfolio-item strong{display:block;color:#072022}
+  </style>
+
+  <!-- CryptoJS Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+
+</head>
+<body>
+
+  <!-- 🔥 FULL WIDTH TOP LOGO BANNER -->
+  <div class="top-banner">
+    <img src="secureshell-logo.jpg" alt="SecureShell Logo">
+  </div>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="site-text">
+      <h1>SecureShell</h1>
+      <div class="subtitle">Client-Side Encryption & Decryption Playground — Base64, DES, AES</div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="left card">
+      <h2>Encryption & Decryption Tool</h2>
+
+      <label for="text-input">Enter Text:</label>
+      <textarea id="text-input" rows="4" placeholder="Type text here..."></textarea>
+
+      <label for="key-input">Enter Encryption Key:</label>
+      <input id="key-input" type="password" placeholder="Encryption key (masked)" />
+
+      <label for="cipher-select">Select Cipher:</label>
+      <select id="cipher-select">
+        <option>Base64</option>
+        <option>DES</option>
+        <option>AES</option>
+      </select>
+
+      <div class="row">
+        <button id="encrypt-btn" class="btn primary">Encrypt</button>
+        <button id="decrypt-btn" class="btn primary">Decrypt</button>
+        <button id="swap-btn" class="btn secondary" title="Copy output to input">Use Output as Input</button>
+      </div>
+
+      <label for="output">Output:</label>
+      <textarea id="output" rows="4" placeholder="Result will appear here..." readonly></textarea>
+
+      <div class="row" style="margin-top:8px">
+        <button id="copy-btn" class="btn secondary">Copy to Clipboard</button>
+        <button id="clear-btn" class="btn secondary">Clear</button>
+      </div>
+
+       <!-- DESCRIPTION SECTION -->
+<div class="description-section">
+  <strong>What is Encryption?</strong><br><br>
+  Encryption is the process of transforming readable data into an unreadable form so that only someone with the correct key can read it. It protects information from unauthorized access, ensuring privacy, safety, and confidentiality whether the data is stored on a device, sent across a network, or stored in the cloud. Modern encryption is the backbone of digital security, used in banking, messaging apps, websites, secure communications, and almost every digital system today.<br><br>
+
+  <strong>What is Decryption?</strong><br><br>
+  Decryption is the process of converting encrypted data (ciphertext) back into its original readable form (plaintext) using the correct key. It allows authorized users to access protected information while keeping it secure from unauthorized access.<br><br>
+
+        <strong> Base64 Encoding:</strong><br>
+        Base64 is not a true encryption method but an encoding technique that converts binary data into text. It is often used when transmitting binary files (like images or documents) through systems that only accept text data. Base64 ensures that all data remains intact without modification.  
+        <br><br>
+        Although Base64 makes text unreadable to casual eyes, it is not secure and can be easily reversed. Its main use is formatting, not protection. It is ideal for embedding images in code, transferring data safely in URLs, or converting files into a clean text format.
+
+        <br><br><strong>DES (Data Encryption Standard):</strong><br>
+        DES is one of the earliest and most widely used symmetric key encryption algorithms. It converts data into 64-bit blocks using a 56-bit key. Although it was considered secure in the 1980s and 1990s, modern computing power has made DES relatively weak.  
+        <br><br>
+        Despite being outdated, DES remains important for learning cryptography. It introduced many concepts used in advanced algorithms and still exists in older banking systems and legacy security applications.
+
+        <br><br><strong>🛡 AES (Advanced Encryption Standard):</strong><br>
+        AES is the modern global standard for secure encryption. It works on 128-bit blocks and supports 128-, 192-, or 256-bit keys. AES is extremely secure, fast, and used in almost all secure applications — such as WhatsApp, Signal, VPNs, government communication, Wi-Fi protection, and cloud data security.  
+        <br><br>
+        AES is resistant to nearly all known attacks and is trusted by cybersecurity professionals, military communication, and global institutions. It is the strongest and most practical encryption algorithm for everyday use.
+      </div>
+    </div>
+
+    <!-- RIGHT SIDE -->
+    <div class="right">
+      <div class="card">
+        <h3 class="small">Feedback</h3>
+        <form id="feedback-form">
+          <input id="fb-name" placeholder="Your name" />
+          <input id="fb-email" placeholder="Email" style="margin-top:8px" />
+          <textarea id="fb-message" rows="3" placeholder="Your feedback" style="margin-top:8px"></textarea>
+          <div style="margin-top:8px">
+            <button type="submit" class="btn secondary">Send Feedback</button>
+          </div>
+          <div id="fb-status" class="muted small" style="margin-top:6px"></div>
+        </form>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <h3 class="small">Contact</h3>
+        <div class="muted small"><strong>Created By: Sundas Fatima Shafique</strong></div>
+        <br>
+        <div class="muted small">Email: <a href="mailto:sundas8124@gmail.com">sundas8124@gmail.com</a></div>
+        <div class="muted small">GitHub: <a href="https://github.com/sundas8124" target="_blank">github.com/sundas8124</a></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="max-width:1100px;margin:14px auto">
+    <div class="card">
+      <h3 class="small muted">Debug / Log (visible for troubleshooting)</h3>
+      <div id="debug"></div>
+    </div>
+  </div>
+
+  <!-- CHATBOT -->
+  <div class="chatbot-btn" id="chatbot-btn">Chat</div>
+  <div class="chatbot-window" id="chatbot-window">
+    <div class="chatbot-header">Site Chatbot</div>
+    <div class="chatbot-messages" id="chatbot-messages"></div>
+    <div class="chatbot-input">
+      <input type="text" id="chatbot-input" placeholder="Ask anything..." />
+      <button id="chatbot-send">Send</button>
+
+    </div>
+  </div>
+
+<script>
+(function(){
+  function debugLog(...args){
+    const el=document.getElementById('debug');
+    if(!el)return;
+    const ts=new Date().toLocaleTimeString();
+    el.textContent+='['+ts+'] '+args.join(' ')+'\\n';
+    el.scrollTop=el.scrollHeight;
+  }
+
+  window.addEventListener('load',()=>{
+    debugLog('SecureShell loaded.');
+
+    const textInput=document.getElementById('text-input');
+    const keyInput=document.getElementById('key-input');
+    const cipherSelect=document.getElementById('cipher-select');
+    const encryptBtn=document.getElementById('encrypt-btn');
+    const decryptBtn=document.getElementById('decrypt-btn');
+    const output=document.getElementById('output');
+    const copyBtn=document.getElementById('copy-btn');
+    const clearBtn=document.getElementById('clear-btn');
+    const swapBtn=document.getElementById('swap-btn');
+
+    /* --- Encryption Functions --- */
+    function encodeBase64(s){ return btoa(unescape(encodeURIComponent(s))); }
+    function decodeBase64(s){ return decodeURIComponent(escape(atob(s))); }
+
+    function desEncrypt(plain,pass){
+      const key=CryptoJS.enc.Utf8.parse((pass||'').slice(0,8).padEnd(8,' '));
+      return CryptoJS.DES.encrypt(plain,key,{mode:CryptoJS.mode.ECB,padding:CryptoJS.pad.Pkcs7}).toString();
+    }
+    function desDecrypt(payload,pass){
+      const key=CryptoJS.enc.Utf8.parse((pass||'').slice(0,8).padEnd(8,' '));
+      return CryptoJS.DES.decrypt(payload,key,{mode:CryptoJS.mode.ECB,padding:CryptoJS.pad.Pkcs7}).toString(CryptoJS.enc.Utf8);
+    }
+
+    function aesEncrypt(plain,pass){
+      const key=CryptoJS.enc.Utf8.parse((pass||'').slice(0,16).padEnd(16,' '));
+      return CryptoJS.AES.encrypt(plain,key,{mode:CryptoJS.mode.ECB,padding:CryptoJS.pad.Pkcs7}).toString();
+    }
+    function aesDecrypt(payload,pass){
+      const key=CryptoJS.enc.Utf8.parse((pass||'').slice(0,16).padEnd(16,' '));
+      return CryptoJS.AES.decrypt(payload,key,{mode:CryptoJS.mode.ECB,padding:CryptoJS.pad.Pkcs7}).toString(CryptoJS.enc.Utf8);
+    }
+
+    encryptBtn.addEventListener('click',()=>{
+      const text=textInput.value.trim(), key=keyInput.value, cipher=cipherSelect.value;
+      if(!text||!key){ alert("Enter both text and key."); return; }
+      try{
+        let out="";
+        if(cipher==="Base64") out=encodeBase64(text);
+        if(cipher==="DES") out=desEncrypt(text,key);
+        if(cipher==="AES") out=aesEncrypt(text,key);
+        output.value=out;
+      }catch(e){ alert("Encryption failed."); }
+    });
+
+    decryptBtn.addEventListener('click',()=>{
+      const src=textInput.value.trim()||output.value.trim(), key=keyInput.value, cipher=cipherSelect.value;
+      if(!src||!key){ alert("Enter both text and key."); return; }
+      try{
+        let out="";
+        if(cipher==="Base64") out=decodeBase64(src);
+        if(cipher==="DES") out=desDecrypt(src,key);
+        if(cipher==="AES") out=aesDecrypt(src,key);
+        output.value=out;
+      }catch(e){ alert("Decryption failed."); }
+    });
+
+    swapBtn.addEventListener('click',()=>{ textInput.value=output.value; });
+
+    copyBtn.addEventListener('click',()=>{
+      navigator.clipboard.writeText(output.value.trim());
+      alert("Copied!");
+    });
+
+    clearBtn.addEventListener('click',()=>{
+      textInput.value=""; output.value=""; keyInput.value="";
+    });
+
+    /* --- FEEDBACK --- */
+    document.getElementById('feedback-form').addEventListener('submit',ev=>{
+      ev.preventDefault();
+      document.getElementById('fb-status').textContent="Thanks — your feedback was recorded!";
+      ev.target.reset();
+      setTimeout(()=>document.getElementById('fb-status').textContent="",3000);
+    });
+
+    /* --- CHATBOT --- */
+    const chatbotBtn=document.getElementById('chatbot-btn');
+    const chatbotWindow=document.getElementById('chatbot-window');
+    const chatbotMessages=document.getElementById('chatbot-messages');
+    const chatbotInput=document.getElementById('chatbot-input');
+    const chatbotSend=document.getElementById('chatbot-send');
+
+    function botReply(msg){
+      const div=document.createElement('div');
+      div.textContent="Bot: "+msg;
+      chatbotMessages.appendChild(div);
+      chatbotMessages.scrollTop=chatbotMessages.scrollHeight;
+    }
+    function userMsg(msg){
+      const div=document.createElement('div');
+      div.style.fontWeight="600";
+      div.textContent="You: "+msg;
+      chatbotMessages.appendChild(div);
+    }
+
+    chatbotBtn.addEventListener('click',()=>{
+      chatbotWindow.style.display = chatbotWindow.style.display==="flex" ? "none" : "flex";
+    });
+
+    chatbotSend.addEventListener('click',()=>{
+      const q=chatbotInput.value.trim().toLowerCase();
+      if(!q) return;
+      userMsg(chatbotInput.value);
+      chatbotInput.value="";
+
+      let reply="";
+
+      // Encryption/security related
+      if(q.includes("encrypt")||q.includes("aes")||q.includes("security")||q.includes("des")||q.includes("base64")){
+        reply="Encryption transforms readable information into protected ciphertext. AES is currently the strongest widely used cipher. DES and Base64 are older or simpler methods.";
+      }
+      // Greetings
+      else if(q.includes("hello")||q.includes("hi")||q.includes("hey")){
+        reply="Hello! How can I help you today?";
+      }
+      // General knowledge questions
+      else if(q.includes("who")||q.includes("what")||q.includes("when")||q.includes("where")||q.includes("why")||q.includes("how")){
+        reply="This is a brief answer for your query: "+q+". You can look up detailed info online or ask me to explain further!"
+        ;
+      }
+      // Default fallback
+      else {
+        reply="Here is an answer related to your query: "+q+". I can provide more detailed explanations if needed.";
+      }
+
+      botReply(reply);
+    });
+  });
+})();
+</script>
+<!-- PORTFOLIO SECTION -->
+<div class="portfolio-section">
+  <div class="portfolio-header">Portfolio — Sundas Fatima Shafique</div>
+
+  <div class="portfolio-item">
+    <strong>About Me:</strong>
+    <p>BS Cyber Security & Digital Forensics Student</p>
+    <p>Department of Information & Communication Engineering</p>
+    <p>The Islamia University of Bahawalpur</p>
+    <p>Passionate about cyber security and digital forensics. I enjoy exploring ethical hacking, penetration testing, networking fundamentals, and programming to build a strong foundation in security.</p>
+  </div>
+
+  <div class="portfolio-item">
+    <strong>Certifications:</strong>
+    <ul>
+      <li>NEVTECH CEH</li>
+      <li>IEEE CEH</li>
+      <li>EC-COUNCIL</li>
+      <li>Google Developers</li>
+    </ul>
+  </div>
+
+  <div class="portfolio-item">
+    <strong>Projects:</strong>
+    <ul>
+      <li>Sundas8124/freshfold-laundry</li>
+      <li>Sundas8124/SQL-injection-vulnerable-payloads</li>
+      <li>Sundas8124/Encryption-Decryption-app-for-cyber-security-digital-forensics</li>
+      <li>Sundas8124/intrusion-detection-tool-by-TechTitans</li>
+    </ul>
+  </div>
+
+  <div class="portfolio-item">
+    <strong>Highlights:</strong>
+    <ul>
+      <li>IEEE Seminar Participant — 'Emerging Cyber Security Threats & The State of the Art' seminar (Oct 2025)</li>
+      <li>DAE in CIT - Grade A (Punjab Board)</li>
+      <li>Active IUB Student — BS Cyber Security & Digital Forensics</li>
+    </ul>
+  </div>
+    <!-- Skills -->
+  <div class="portfolio-item">
+    <strong>Skills:</strong>
+    <ul>
+      <li>App & Web Development</li>
+      <li>Certified Ethical Hacker (CEH)</li>
+      <li>Cyber Security & Digital Forensics</li>
+      <li>Penetration Testing</li>
+      <li>Networking Fundamentals</li>
+      <li>Programming (Python, JavaScript, C++)</li>
+      <li>Malware Analysis</li>
+      <li>Graphic Design</li>
+      <li>Problem Solving & Troubleshooting</li>
+      <li>Cloud Security Basics</li>
+     <li>Data Analysis & Visualization</li>
+      <li>Team Collaboration & Communication</li>
+    </ul>
+  </div>
+  <div class="portfolio-item">
+    <strong>Areas of Interest:</strong>
+    <ul>
+      <li>Ethical Hacking</li>
+      <li>Digital Forensics</li>
+      <li>Network Security</li>
+      <li>Penetration Testing</li>
+      <li>Programming</li>
+      <li>Malware Analysis</li>
+    </ul>
+  </div>
+
+  <div class="portfolio-item">
+  <strong>Let's Connect!</strong>
+  <div>Email: <a href="mailto:sundas8124@gmail.com">sundas8124@gmail.com</a></div>
+  <div>GitHub: <a href="https://github.com/sundas8124" target="_blank">github.com/sundas8124</a></div>
+</div>
+</div>
+
+</body>
+</html>
